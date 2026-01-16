@@ -388,9 +388,9 @@ MIT
 
 ## Contact
 
-Kaushal Prajapati\n
-Email: kaushalprajapati5296@gmail.com\n
-Contact: 08140636453\n
+- Kaushal Prajapati
+- Email: kaushalprajapati5296@gmail.com
+- Contact: 08140636453
 
 ---
 
