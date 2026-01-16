@@ -1,4 +1,4 @@
-# Lunara: Machine Learning Task Collection
+# Machine Learning Task Collection
 
 A comprehensive collection of machine learning tasks for evaluation and benchmarking, supporting both **Harbor** and **T-bench** task formats. This repository contains 12 diverse machine learning challenges covering classification, regression, and multi-label problems across various domains.
 
@@ -384,11 +384,13 @@ Each task has its own detailed README.md file. Navigate to individual task direc
 
 ## License
 
-[Add license information here]
+MIT
 
 ## Contact
 
-[Add contact information here]
+Kaushal Prajapati
+Email: kaushalprajapati5296@gmail.com
+Contact: 08140636453
 
 ---
 
