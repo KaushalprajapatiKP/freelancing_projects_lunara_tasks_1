@@ -1,0 +1,241 @@
+prompt: |
+  Build a machine learning system to predict listening duration buckets for Spotify track plays
+  using streaming metadata.
+
+  CHALLENGE OVERVIEW:
+
+  Understanding user engagement with music streaming platforms is critical for recommendation
+  systems, content curation, and user experience optimization. When users play tracks on Spotify,
+  their listening patterns reveal complex engagement behaviors: some tracks are skipped after
+  seconds, others played partially, and some on repeat for full duration. Predicting how long
+  a user will engage with a track based on contextual metadata enables personalized experiences,
+  improved recommendations, and better content discovery.
+
+  This challenge mirrors real-world music streaming analytics workflows. Using temporal features
+  (time of day, day of week), device information (platform), behavioral signals (shuffle mode,
+  skip patterns, play reasons), and content metadata (artist, album), you will build a model
+  that predicts the listening duration bucket of a track play. The target variable is formed
+  by discretizing actual listening duration into ~50 equal-frequency classes, creating a
+  challenging multi-class classification problem that requires learning nuanced engagement
+  patterns.
+
+  The specification below defines the problem, data interface, modeling constraints, and
+  evaluation criteria.
+
+  PROBLEM:
+
+  Predict the listening duration bucket (0-49) for each Spotify track play as a multi-class
+  classification task using all available metadata features EXCEPT duration_ms itself.
+
+  The duration buckets are created by:
+    - Taking actual listening duration (duration_ms)
+    - Discretizing into ~50 equal-frequency classes using quantile-based binning
+    - Creating balanced classes where each bucket represents ~2% of plays
+
+  GOALS:
+
+  Train a model using the training dataset provided at:
+    /workdir/data/train.csv
+
+  Make predictions on the test dataset provided at:
+    /tests/test.csv
+
+  The solution should:
+
+    - Create a script at `/workdir/solution.sh` that implements the full ML pipeline
+    - Load and validate the dataset schema
+    - Analyze the data to understand streaming patterns (temporal, behavioral, content-based)
+    - Engineer features from timestamps, categorical variables, and behavioral signals
+    - Handle the multi-class classification problem with 50 balanced classes
+    - Train one or more machine learning models optimized for Macro F1-Score
+    - Tune hyperparameters to maximize cross-validation performance
+    - **Create a Python script at `/workdir/predict.py`** that loads the trained model and generates predictions
+    - The `predict.py` script must accept the test CSV path as a command-line argument (sys.argv[1])
+    - Generate predictions for the test set and save to `/workdir/outputs/predictions.csv`
+
+  CONSTRAINTS:
+
+  Allowed libraries:
+    - Python 3.x
+    - NumPy
+    - pandas
+    - scikit-learn
+    - scipy
+    - joblib
+    - lightgbm
+    - xgboost
+    - imbalanced-learn
+
+  Disallowed:
+    - Deep learning frameworks (TensorFlow, PyTorch, JAX)
+    - External API calls or internet access at runtime
+    - Using duration_ms as a feature (this is effectively the target)
+    - Pre-trained embeddings or external data sources
+
+  The entire pipeline must be executable via a single shell entrypoint.
+
+  EVALUATION:
+
+  Your model will be evaluated using multiple thresholds to ensure robust, balanced performance
+  across all 50 duration bucket classes. ALL thresholds must be met to pass.
+
+  **Passing threshold:**
+    - Primary: Macro F1 score ≥ 0.555
+
+  This threshold ensures:
+    - Overall balanced performance across all classes (Macro F1 ≥ 0.555)
+
+  Why this threshold is challenging:
+    - 50-class classification is inherently difficult (random baseline ~0.02 Macro F1)
+    - Macro F1 ≥ 0.555 requires good performance across engagement patterns
+    - The tertiary threshold prevents models from ignoring too many duration ranges
+    - Balanced classes mean you can't rely solely on majority class predictions
+    - Requires sophisticated feature engineering to capture listening patterns
+
+  To meet these thresholds, you should implement:
+    - **Temporal Features:** Hour, day, cyclic encoding (sin/cos), time periods
+    - **Target Encoding:** Track/artist/album historical bucket patterns with smoothing
+    - **Behavioral Engineering:** reason_start/end combinations, skip interactions, shuffle patterns
+    - **High-Cardinality Handling:** Proper encoding of unique tracks/artists/albums
+    - **Platform Analysis:** Platform-specific listening behavior patterns
+    - **Interaction Features:** Cross-feature interactions (track×skip, artist×shuffle, platform×hour)
+    - **Advanced Models:** LightGBM/XGBoost with appropriate hyperparameter tuning
+    - **Ensemble Methods:** Multiple models with different configurations for robustness
+
+  OUTPUT FORMAT:
+
+  Generate predictions as a CSV file at `/workdir/outputs/predictions.csv` with
+  exactly two columns:
+    - id: The play identifier (as string)
+    - prediction: Duration bucket (integer from 0-49)
+
+  Example:
+  ```
+  id,prediction
+  1,23
+  2,45
+  3,12
+  ```
+
+  DATA SCHEMA:
+
+  The training data (`/workdir/data/train.csv`) contains the following columns:
+
+  **Required columns:**
+    - id: Unique play identifier (integer)
+    - timestamp: ISO 8601 timestamp of when the play occurred (string, e.g., "2014-07-13T23:56:17Z")
+    - platform: Device/platform used for playback (string, e.g., "Windows 7", "WebPlayer", "iOS")
+    - duration_ms: ACTUAL listening duration in milliseconds (integer, AVAILABLE IN TRAINING ONLY)
+    - track_name: Name of the track played (string, may contain special characters)
+    - artist: Artist name (string, high cardinality)
+    - album: Album name (string, high cardinality)
+    - track_uri: Spotify URI for the track (string, format: "spotify:track:...")
+    - reason_start: Reason playback started (string, e.g., "playbtn", "trackdone", "fwdbtn", "popup", "unknown")
+    - reason_end: Reason playback ended (string, e.g., "trackdone", "playbtn", "fwdbtn", "unknown")
+    - shuffle: Whether shuffle mode was enabled (integer, 0 or 1)
+    - skipped: Whether the track was skipped (integer, 0 or 1)
+    - source_file: Original data file name (string, for reference)
+    - duration_bucket: TARGET VARIABLE (integer 0-49, ONLY IN TRAINING DATA)
+
+  **CRITICAL FEATURE ENGINEERING REQUIREMENTS:**
+
+  To achieve the passing threshold, you MUST implement sophisticated feature engineering:
+
+  1. **Temporal Features:**
+     - Extract hour of day (0-23) - users listen differently at different times
+     - Extract day of week (0-6) - weekday vs weekend patterns
+     - Create time period bins (morning, afternoon, evening, night)
+     - Cyclic encoding for hour/day (sin/cos transformations) to capture periodicity
+     - Extract month, day of month if useful for long-term patterns
+
+  2. **Behavioral Features:**
+     - reason_start/reason_end combinations (e.g., "playbtn→trackdone" indicates full listen)
+     - Skip flag analysis - skipped=1 correlates strongly with short durations
+     - Shuffle mode impact on listening behavior
+     - Create interaction features between behavioral signals
+
+  3. **Content-based Aggregations:**
+     - Per-artist statistics: mean/median/std of duration buckets, skip rates
+     - Per-album statistics: engagement metrics
+     - Per-track statistics: how this specific track is typically consumed
+     - Use target encoding or smoothed aggregations to handle high cardinality
+     - Handle cold-start: tracks/artists with few observations
+
+  4. **Session-level Features:**
+     - Sequence patterns: is this play after skip, after full listen, etc.
+     - Time gaps between consecutive plays by same user (if timestamps suggest sessions)
+     - Platform switches or consistency
+
+  5. **Platform Features:**
+     - Platform type encoding (mobile vs desktop vs web)
+     - Platform-specific listening patterns
+
+  6. **Missing Value Handling:**
+     - Some categorical features may have missing or "unknown" values
+     - Create indicator features for missingness if informative
+
+  7. **Advanced Encoding:**
+     - Use target encoding for high-cardinality features (artist, album, track_uri)
+     - Frequency encoding for categorical variables
+     - Consider smoothing techniques to prevent overfitting
+
+  **DATA QUALITY NOTES:**
+
+  - duration_ms values range from 0 (instant skips) to several minutes
+  - The 50 duration buckets are equal-frequency, so each bucket has ~2% of training samples
+  - Some tracks appear multiple times with different listening durations (user behavior varies)
+  - Artist and album names are high-cardinality categorical variables (thousands of unique values)
+  - Timestamps span from 2014 to 2018 (multi-year history)
+  - reason_start/reason_end provide strong signals about engagement:
+      * "trackdone" suggests track finished playing
+      * "fwdbtn"/"backbtn" suggest skipping behavior
+      * "playbtn" suggests manual selection
+  - skipped=1 is a strong indicator but doesn't tell the full story
+  - shuffle=1 may correlate with lower engagement (background listening)
+
+  The test data (`/tests/test.csv`) has the same schema but WITHOUT the duration_ms and
+  duration_bucket columns.
+
+  CONTEXT:
+
+  Dataset properties:
+    - Real Spotify streaming history data
+    - Mixed numeric, categorical, and temporal features
+    - High-cardinality categorical variables (artists, albums, tracks)
+    - **50-class balanced classification** (each class ~2% of data)
+    - Strong class separability based on behavioral signals
+    - Temporal patterns matter (time of day, day of week)
+    - Content patterns matter (certain artists/genres have different engagement)
+
+  This task reflects real-world applications in:
+    - Music recommendation systems
+    - Personalized playlist generation
+    - Content discovery and curation
+    - User engagement prediction
+    - A/B testing for streaming platforms
+    - Artist/label analytics
+
+  Success on this task demonstrates ability to:
+    - Handle multi-class classification with many balanced classes
+    - Engineer features from temporal, behavioral, and content metadata
+    - Work with high-cardinality categorical variables
+    - Optimize for macro metrics (not just accuracy)
+    - Build production-grade ML pipelines for streaming analytics
+
+metadata:
+  difficulty: hard
+  category: machine-learning
+  tags:
+    - tabular-data
+    - music-streaming
+    - user-engagement
+    - multi-class-classification
+    - classical-ml
+    - time-series-features
+    - behavioral-analytics
+  time_limit: 7200
+  memory_limit: 4096
+  max_agent_timeout_sec: 7200
+  expert_time_estimate_min: 180
+  junior_time_estimate_min: 360
+

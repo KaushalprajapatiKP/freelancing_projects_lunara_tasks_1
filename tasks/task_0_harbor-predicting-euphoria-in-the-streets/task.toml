@@ -1,0 +1,16 @@
+version = "1.0"
+
+[metadata]
+difficulty = "hard"
+category = "MLE"
+tags = ["multi-task", "regression", "classification", "healthcare", "tabular-data"]
+
+[verifier]
+timeout_sec = 3600.0
+
+[agent]
+timeout_sec = 3600.0
+
+[environment]
+build_timeout_sec = 600.0
+memory_mb = 2048

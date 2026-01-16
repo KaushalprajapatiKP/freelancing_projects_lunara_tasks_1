@@ -1,0 +1,202 @@
+prompt: |
+  Academic Risk Prediction
+  
+  Build a machine learning system to predict the academic risk category of students in higher education using demographic, academic, and socioeconomic features.
+  
+  Overview:
+  
+  Predicting student academic outcomes is crucial for educational institutions to identify at-risk students early and provide targeted support. By analyzing student characteristics, academic performance, and contextual factors, institutions can develop intervention strategies to improve retention and graduation rates.
+  
+  In this challenge, you will build a classification model that predicts student academic risk categories from demographic, academic, and socioeconomic features. The model must learn the relationship between student characteristics and their final academic outcome. The specification below describes the training and test data, required prediction interface, and evaluation criteria.
+  
+  Training data: /workdir/data/train.csv (61,214 students with known outcomes)
+  Test data: /tests/test.csv (~15,304 students, no labels)
+  Output: /workdir/predict.py that loads your trained model and makes predictions
+  
+  What you need to do:
+  
+  1. Train a classification model using student features:
+     - Demographic: Marital status, Gender, Age at enrollment, Nacionality (Portuguese spelling), International status
+     - Academic: Application mode, Course, Previous qualification and grade, Admission grade
+     - Family background: Mother's/Father's qualification and occupation
+     - Academic performance: Curricular units (enrolled, evaluations, approved, grades) for 1st and 2nd semesters
+     - Contextual: Displaced, Educational special needs, Debtor, Tuition fees status, Scholarship holder
+     - Economic: Unemployment rate, Inflation rate, GDP
+  
+  2. Train a model on the training data and save it to /workdir/model.pkl
+     - The model file must be saved as a pickle file at exactly /workdir/model.pkl
+     - Include all preprocessing objects (encoders, feature lists) needed for prediction
+     
+  3. Create /workdir/predict.py that:
+     - Takes model path as sys.argv[1] and test CSV path as sys.argv[2]
+     - Validates that the test CSV has all required feature columns (not just 'id')
+     - Validates that required features are present and handles missing values appropriately
+     - Outputs predictions to /workdir/predictions.csv
+     - Columns: id, Target (exactly two columns, no extra columns allowed)
+     - Each id must be unique (no duplicate IDs allowed)
+     - The id values must match the test file IDs exactly
+     - Target values: "Graduate", "Enrolled", or "Dropout"
+     - Must apply the same feature engineering used during training
+  
+  Example predict.py:
+  ```python
+  import sys, pandas as pd, pickle
+  
+  if len(sys.argv) < 3:
+      raise ValueError("Usage: predict.py <model_path> <test_csv_path>")
+  
+  model_path = sys.argv[1]
+  test_csv_path = sys.argv[2]
+  
+  # Load model
+  with open(model_path, 'rb') as f:
+      model_data = pickle.load(f)
+      model = model_data['model']
+      # ... load other required preprocessing objects
+  
+  # Load and validate test data
+  test_df = pd.read_csv(test_csv_path)
+  # Validate columns, apply feature engineering, handle missing values
+  
+  predictions = model.predict(...)
+  
+  pd.DataFrame({
+      'id': test_df['id'],
+      'Target': predictions
+  }).to_csv('/workdir/predictions.csv', index=False)
+  ```
+  
+  Structure of Data:
+  
+  Training Data:
+  - Location: /workdir/data/train.csv
+  - Samples: 61,214 students with known academic outcomes
+  - Format: CSV with features and target (Target column)
+  
+  Test Data:
+  - Location: /tests/test.csv (grader only)
+  - Samples: ~15,304 test students
+  - Format: CSV with features only (no Target column)
+  
+  Output:
+  - File: /workdir/predict.py (executable Python script)
+  - Outputs: /workdir/predictions.csv with exactly two columns: id, Target
+  - The predictions.csv must have the exact header: id,Target (no extra columns allowed)
+  - Each row must have a unique id value (no duplicate IDs allowed)
+  - The id values must match the test file IDs exactly
+  
+  Features:
+  
+  Demographic Features:
+  - Marital status: Categorical (1, 2, 3, 4, 5, 6)
+  - Gender: Binary (0, 1)
+  - Age at enrollment: Numeric (17-70)
+  - Nacionality: Categorical (1-109)
+  - International: Binary (0, 1)
+  
+  Academic Features:
+  - Application mode: Categorical (1-59)
+  - Application order: Numeric (1-9)
+  - Course: Categorical (numerous course codes)
+  - Daytime/evening attendance: Binary (1, 0)
+  - Previous qualification: Categorical (1-43)
+  - Previous qualification (grade): Numeric (0-200)
+  - Admission grade: Numeric (0-200)
+  
+  Family Background:
+  - Mother's qualification: Categorical (1-50)
+  - Father's qualification: Categorical (1-50)
+  - Mother's occupation: Categorical (0-10)
+  - Father's occupation: Categorical (0-10)
+  
+  Academic Performance (1st Semester):
+  - Curricular units 1st sem (credited): Numeric
+  - Curricular units 1st sem (enrolled): Numeric
+  - Curricular units 1st sem (evaluations): Numeric
+  - Curricular units 1st sem (approved): Numeric
+  - Curricular units 1st sem (grade): Numeric (0-20)
+  - Curricular units 1st sem (without evaluations): Numeric
+  
+  Academic Performance (2nd Semester):
+  - Curricular units 2nd sem (credited): Numeric
+  - Curricular units 2nd sem (enrolled): Numeric
+  - Curricular units 2nd sem (evaluations): Numeric
+  - Curricular units 2nd sem (approved): Numeric
+  - Curricular units 2nd sem (grade): Numeric (0-20)
+  - Curricular units 2nd sem (without evaluations): Numeric
+  
+  Contextual Features:
+  - Displaced: Binary (0, 1)
+  - Educational special needs: Binary (0, 1)
+  - Debtor: Binary (0, 1)
+  - Tuition fees up to date: Binary (0, 1)
+  - Scholarship holder: Binary (0, 1)
+  
+  Economic Indicators:
+  - Unemployment rate: Numeric
+  - Inflation rate: Numeric
+  - GDP: Numeric
+  
+  Target Variable:
+  - Target: Categorical ("Graduate", "Enrolled", "Dropout")
+    - Graduate: Student successfully completed the program
+    - Enrolled: Student is currently enrolled
+    - Dropout: Student left the program without completing
+  
+  Evaluation:
+  
+  Your model is evaluated using two metrics:
+  
+  Primary Metric - Accuracy:
+  - Accuracy = (Number of correct predictions) / (Total number of predictions)
+  - Binary scoring: Pass if Accuracy ≥ 0.8325 (83.25%), Fail otherwise
+
+  Other Metrics (Reported for Information):
+  - Macro F1-Score: Average of F1-scores across all classes (Graduate, Enrolled, Dropout)
+  - Per-Class F1-Score: Individual F1-scores for each class
+  - These metrics are reported for evaluation but do not affect the pass/fail decision
+
+  Passing Requirements:
+  The evaluation is binary: Pass if Accuracy ≥ 0.8325 (83.25%), Fail otherwise.
+  - Accuracy ≥ 0.8325 (83.25%) → PASS
+  - Accuracy < 0.8325 (83.25%) → FAIL
+  
+  Note: This is a binary pass/fail evaluation with no partial scoring. You must meet the accuracy 
+  threshold to pass. Achieving this threshold requires advanced ensemble methods, sophisticated 
+  feature engineering, and careful handling of class imbalance.
+  
+  Other metrics like precision, recall, macro F1, and per-class F1-scores are reported for information.
+  
+  Available packages: Python standard library, NumPy, pandas, scikit-learn, xgboost, lightgbm
+  
+  Competition Context:
+  
+  This task is based on the 2024 Kaggle Playground Series Season 4 Episode 6 competition. Top-performing 
+  solutions (top 5: 0.848-0.852 accuracy) used advanced ensemble techniques including:
+  - Stacking with meta-learners (LogisticRegression, LightGBM on top of base models)
+  - Probability calibration (Isotonic, Platt scaling) for better class separation
+  - Multiple diverse base models (LightGBM, XGBoost, CatBoost with different hyperparameters)
+  - Advanced feature engineering (approval rate trends, semester-to-semester changes, failure patterns)
+  - Stratified k-fold cross-validation for robust model selection
+  - Class-specific model optimization (different hyperparameters for imbalanced classes)
+  
+  Key insight: Combining model diversity through ensembling with probability calibration and 
+  sophisticated feature engineering yields the best results. Simple single-model approaches 
+  will not achieve the required thresholds.
+
+metadata:
+  difficulty: hard
+  category: MLE
+  tags:
+    - classification
+    - machine-learning
+    - education
+    - multi-class-classification
+    - ensemble-methods
+    - stacking
+  time_limit: 900
+  memory_limit: 2048
+  max_agent_timeout_sec: 1800
+  expert_time_estimate_min: 180
+  junior_time_estimate_min: 360
+

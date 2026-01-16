@@ -1,0 +1,127 @@
+prompt: |
+  Taxi Fare Prediction
+  
+  Build a machine learning system to predict taxi fare amounts using geospatial, temporal, and contextual features.
+  
+  Overview:
+
+  Modern taxi and ride-hailing services rely on fare prediction models to support pricing, demand forecasting, and 
+  customer transparency. Given information about where and when a trip happens, how long it takes, and the 
+  surrounding traffic and weather conditions, these systems estimate a fair but profitable price before the ride 
+  even starts. Accurate fare estimates help balance rider trust, driver earnings, and platform revenue.
+
+  In this challenge, you will build a regression model that predicts taxi fare amounts from geospatial, temporal, 
+  and contextual trip features. Using trip coordinates, timestamps, trip characteristics, and environmental signals,
+  your model must learn the relationship between trip conditions and final fare. The specification below describes 
+  the training and test data, required prediction interface, and evaluation criteria; additional implementation 
+  guidance is provided in `REQUIREMENTS.md`.
+
+  Training data: /workdir/data/train_trips.csv (1500 trips with fare amounts)
+  Test data: Hidden from you (~400 trips, no labels)
+  Output: /workdir/predict.py that loads your trained model and makes predictions
+  
+  See /workdir/data/REQUIREMENTS.md for complete specifications.
+  
+  What you need to do:
+  
+  1. Train a regression model using trip features:
+     - Geospatial: pickup/dropoff coordinates, zones, distance
+     - Temporal: pickup_datetime (extract hour, day, rush hour status, etc.)
+     - Trip details: passenger_count, duration, trip_type
+     - Environmental: traffic_level, weather_condition, surge_multiplier
+  
+  2. Create /workdir/predict.py that:
+     - Takes test CSV path as sys.argv[1]
+     - Outputs predictions to /workdir/predictions.csv
+     - Columns: trip_id, predicted_fare
+  
+  Example predict.py:
+  ```python
+  import sys, pandas as pd, pickle
+  
+  model = pickle.load(open('model.pkl', 'rb'))
+  test_df = pd.read_csv(sys.argv[1])
+  
+  predictions = model.predict(...)
+  
+  pd.DataFrame({
+      'trip_id': test_df['trip_id'],
+      'predicted_fare': predictions
+  }).to_csv('/workdir/predictions.csv', index=False)
+  ```
+  
+  Structure of Data:
+
+  Training Data:
+  - Location: /workdir/data/train_trips.csv
+  - Samples: 1500 taxi trips with known fare amounts
+  - Format: CSV with features and target (fare_amount)
+
+  Test Data:
+  - Location: Hidden from you (grader only)
+  - Samples: ~400 test trips
+  - Format: CSV with features only (no fare_amount)
+
+  Output:
+  - File: /workdir/predict.py (executable Python script)
+  - Outputs: /workdir/predictions.csv with columns trip_id, predicted_fare
+
+  Features:
+
+  Geospatial Features (8 columns):
+  - pickup_latitude: 40.70 to 40.82 (NYC Manhattan-like)
+  - pickup_longitude: -74.02 to -73.93
+  - dropoff_latitude: 40.70 to 40.82
+  - dropoff_longitude: -74.02 to -73.93
+  - pickup_zone: financial_district, midtown, upper_east, upper_west, downtown, harlem
+  - dropoff_zone: same options as pickup_zone
+  - trip_distance_miles: 0.5-25 miles (Haversine distance)
+
+  Temporal Features (1 column):
+  - pickup_datetime: ISO format YYYY-MM-DD HH:MM:SS
+    Training data spans 2024-01-01 to 2024-06-30
+    You should extract: hour (0-23), day_of_week (0-6), day_of_month (1-31), month (1-12)
+    You can derive: is_weekend, is_rush_hour, is_late_night
+
+  Trip Characteristics (4 columns):
+  - passenger_count: 1-6 passengers
+  - trip_duration_minutes: 2-120 minutes (includes traffic)
+  - trip_type: standard, airport, shared, luxury
+  - trip_id: unique identifier
+
+  Environmental Context (3 columns):
+  - traffic_level: light, moderate, heavy, severe
+  - weather_condition: clear, rain, snow, fog
+  - surge_multiplier: 1.0-2.5 (dynamic pricing)
+
+  Target Variable:
+  - fare_amount: $5-$200 (what you're predicting)
+
+  Evaluation:
+  
+  Your model is evaluated using Mean Absolute Error (MAE):
+  - MAE ≤ $3.50 gets you 100% score
+  - MAE ≥ $7.00 gets you 0% score
+  - Linear scaling between $3.50 and $7
+  
+  You need a score of at least 96% to pass (MAE ≤ $3.64).
+  
+  Secondary metrics like RMSE and R² are reported for information but don't affect scoring.
+
+  See /workdir/data/REQUIREMENTS.md for detailed evaluation criteria.
+  
+  Available packages: Python standard library, NumPy, pandas, scikit-learn, scipy
+
+metadata:
+  difficulty: medium 
+  category: MLE
+  tags:
+    - regression
+    - machine-learning
+    - time-series-analysis
+    - data-cleaning
+  time_limit: 300
+  memory_limit: 512
+  max_agent_timeout_sec: 600
+  expert_time_estimate_min: 90
+  junior_time_estimate_min: 180

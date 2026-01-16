@@ -1,0 +1,17 @@
+version = "1.0"
+
+[metadata]
+difficulty = "hard"
+category = "MLE"
+tags = ["regression", "machine-learning", "tabular-data", "stock-prediction"]
+
+[verifier]
+timeout_sec = 3600.0
+
+[agent]
+timeout_sec = 3600.0
+
+[environment]
+build_timeout_sec = 600.0
+memory_mb = 2048
+

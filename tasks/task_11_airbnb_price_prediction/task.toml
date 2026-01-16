@@ -1,0 +1,17 @@
+version = "1.0"
+
+[metadata]
+difficulty = "medium"
+category = "MLE"
+tags = ["regression", "tabular-data", "price-prediction", "real-estate"]
+
+[verifier]
+timeout_sec = 7200.0
+
+[agent]
+timeout_sec = 7200.0
+
+[environment]
+build_timeout_sec = 600.0
+memory_mb = 2048
+

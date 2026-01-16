@@ -1,0 +1,231 @@
+prompt: |
+  Build a machine learning system to predict the operational status of EV charging stations
+  using structured metadata.
+
+  CHALLENGE OVERVIEW:
+
+  As electric vehicle (EV) adoption accelerates worldwide, the reliability of charging
+  infrastructure has become a critical dependency for consumers, fleet operators, and
+  urban planners. Charging stations may become unavailable due to hardware failures,
+  maintenance delays, grid instability, or environmental factors. Predicting which stations
+  are likely to be non-operational enables proactive maintenance, improved routing systems,
+  and better infrastructure planning at scale.
+
+  This challenge mirrors real-world EV infrastructure intelligence workflows. Using
+  structured metadata describing station location, operator, connector configuration,
+  and installation history, you will build a model that predicts whether a charging
+  station is Operational or Not Operational. Because charging behavior and reliability
+  patterns vary strongly across countries and operators, the task emphasizes geographic
+  generalization and country-aware validation rather than random splits.
+
+  The specification below defines the problem, data interface, modeling constraints,
+  and evaluation criteria.
+
+  PROBLEM:
+
+  Predict the operational status of EV charging stations as a binary classification task:
+
+    - Operational
+    - Not Operational
+
+  using all available metadata features except the status field itself.
+
+  GOALS:
+
+  Train a model using the training dataset provided at:
+    /workdir/data/train.csv
+
+  Make predictions on the test dataset provided at:
+    /tests/test.csv
+
+  The solution should:
+
+    - Create a script at `/workdir/solution.sh` that implements the full ML pipeline
+    - Load and validate the dataset schema
+    - Analyze the data to understand its characteristics (missing values, feature types, class distribution)
+    - Preprocess numeric and categorical features appropriately
+    - Train one or more classical machine learning models
+    - Tune hyperparameters using appropriate methods (GridSearchCV, RandomSearch, or manual tuning based on your approach)
+    - Select the best-performing model based on cross-validation or hold-out validation
+    - Save the trained model and preprocessing pipeline to `/workdir/outputs/model.pkl`
+    - Create a prediction script at `/workdir/predict.py` that loads the saved model and generates predictions
+    - Generate predictions for the test set and save to `/workdir/outputs/predictions.csv`
+
+
+  CONSTRAINTS:
+
+  Allowed libraries:
+    - Python 3.x
+    - NumPy
+    - pandas
+    - scikit-learn
+    - scipy
+    - joblib
+    - lightgbm
+    - xgboost
+    - imbalanced-learn
+
+  Disallowed:
+    - Deep learning frameworks (TensorFlow, PyTorch, JAX)
+    - External API calls
+    - Internet access at runtime
+
+  The entire pipeline must be executable via a single shell entrypoint (`/workdir/solution.sh`).
+  
+  The solution.sh script will:
+    - Train the model and save it to `/workdir/outputs/model.pkl`
+    - Create a reusable prediction script at `/workdir/predict.py`
+    - Generate predictions for the test set during training
+  
+  The predict.py script can be used independently for inference:
+    - Usage: `python3 /workdir/predict.py <test_csv_path>`
+    - Loads the saved model from `/workdir/outputs/model.pkl`
+    - Applies the same feature engineering and preprocessing as training
+    - Outputs predictions to `/workdir/outputs/predictions.csv`
+
+  EVALUATION:
+
+  Your model will be evaluated using macro-averaged F1 score. The evaluation uses a
+  country-aware split where entire countries are held out during testing to assess
+  geographic generalization.
+
+  **Passing threshold:**
+    - Macro F1 score ≥ 0.5
+
+  This threshold ensures overall balanced performance across both classes.
+  
+  Given that the dataset has approximately 15:1 to 25:1 ratio of operational to 
+  non-operational stations, achieving this threshold requires sophisticated handling
+  of class imbalance, careful feature engineering, and optimal threshold selection.
+  Simply using default parameters or ignoring data quality issues will NOT suffice.
+
+  OUTPUT FORMAT:
+
+  Generate predictions as a CSV file at `/workdir/outputs/predictions.csv` with
+  exactly two columns:
+    - id: The station identifier (as string)
+    - prediction: Either "Operational" or "Not Operational" (exact capitalization)
+
+  DATA SCHEMA:
+
+  The training data (`/workdir/data/train.csv`) contains the following columns:
+
+  **Required columns:**
+    - id: Unique station identifier (string)
+    - status: Operational status (string, may contain variations like "Operational", "Not Operational", "Temporarily Closed", etc.)
+    - country: Country name (string)
+    - operator: Charging network operator name (string, may be missing)
+    - town: City/town name (string, may be missing)
+    - address: Street address (string, may be missing)
+    - state: State/province (string, may be missing)
+    - postcode: Postal code (string, may be missing)
+    - lat: Latitude (numeric, may be missing)
+    - lon: Longitude (numeric, may be missing)
+    - num_connectors: Number of charging connectors (numeric, may be missing)
+    - connector_types: Comma or pipe-separated list of connector types (string, may be missing)
+      Common types include: "CCS", "Type 2", "CHAdeMO", "Tesla"
+    - date_added: Date when station was added to database (string, ISO format, may be missing)
+
+  **CRITICAL DATA QUALITY ISSUES - MUST HANDLE:**
+
+  The dataset contains several data quality issues that must be handled carefully:
+
+  1. **Status Label Variations and Ambiguities:**
+     The status field contains many variations beyond basic "Operational" and "Not Operational":
+     - Functional variants: "Operational", "OPERATIONAL", "operational", "Active", "Available"
+     - Non-functional variants: "Not Operational", "Non-Operational", "Out of Service", "Inactive"
+     - Maintenance states: "Under Maintenance", "Temporarily Closed", "Temporarilly Closed" (typo)
+     - Planning states: "Planned", "Coming Soon", "Under Construction" (should be Not Operational)
+     - Typos: "Operatinal", "Non-Operatinal", "Temporarilly"
+     - Mixed case: "OPERATIONAL", "operational", "Operational", "OpErAtIoNaL"
+     
+     You must normalize ALL these to "Operational" or "Not Operational" based on whether the
+     station is currently functional. Stations that are planned, under construction, or under
+     maintenance should be considered "Not Operational".
+
+  2. **Informative Missing Data Patterns:**
+     Missing values are NOT random and contain information:
+     - Missing `operator`: Often indicates less reliable or independent stations (more likely Not Operational)
+     - Missing `date_added`: May indicate older stations or incomplete records (more likely Not Operational)
+     - Missing `num_connectors`: Might indicate incomplete setup or unreliable data entry
+     - Missing `connector_types`: Could indicate stations that are not fully configured
+     
+     You should create "is_missing" indicator features and potentially use different imputation
+     strategies based on what is missing.
+
+  3. **Data Validation Requirements:**
+     You MUST validate and handle:
+     - Coordinate ranges: lat must be between -90 and 90, lon between -180 and 180
+     - Invalid coordinates: Some entries may have impossible values (lat > 90, lon > 180)
+     - Negative values: `num_connectors` must be >= 0 (some entries may be negative)
+     - Future dates: `date_added` should not be in the future (data entry errors)
+     - Duplicate IDs: Check for and handle duplicate station IDs
+     - Zero connectors with types: Stations with `num_connectors=0` but `connector_types` listed
+
+  4. **Complex Connector Type Parsing:**
+     The `connector_types` field is highly inconsistent and requires robust parsing:
+     - Mixed separators: "CCS|Type 2,CHAdeMO" (both pipe and comma)
+     - Abbreviations: "CCS2", "CCS1", "Type2", "Type 2", "Type2 (Mennekes)"
+     - Duplicates: "CCS, CCS, Type 2" (same connector listed multiple times)
+     - Special characters: "CCS (Combo)", "Type 2 (Mennekes)", "CHAdeMO v2.0"
+     - Case variations: "ccs", "CCS", "Ccs", "Type 2", "type 2", "TYPE 2"
+     - Multiple formats: "CCS|CCS2", "Type2/Type 2", "CHAdeMO,CHAdeMO"
+     
+     You must parse these consistently to extract:
+     - Individual connector types (CCS, Type 2, CHAdeMO, Tesla)
+     - Connector count (accounting for duplicates)
+     - Connector diversity (number of unique types)
+     - Fast vs slow charging indicators
+
+  5. **Advanced Feature Engineering Requirements:**
+     You should create:
+     - **Interaction features**: `num_connectors * connector_diversity`, `country_operator_interaction`
+     - **Aggregated features**: Operator reliability (mean operational rate per operator),
+       country reliability (mean operational rate per country), town reliability (with low-count handling)
+     - **Temporal features**: Days since station was added (handle various date formats),
+       age-based risk indicators
+     - **Geographic features**: Country-operator interactions, regional patterns
+     - **Missing data indicators**: Binary features for each column indicating if value is missing
+
+  6. **Threshold Optimization:**
+     The default 0.5 probability threshold may NOT be optimal. You must:
+     - Optimize the classification threshold based on validation performance
+     - Consider class distribution when selecting threshold
+     - Use macro F1 score to guide threshold selection
+     - Potentially use different thresholds for different countries/operators if beneficial
+
+  The test data (`/tests/test.csv`) has the same schema but without the `status` column.
+
+  CONTEXT:
+
+  Dataset properties:
+    - Global EV charging stations dataset
+    - Mixed numeric and categorical metadata
+    - **Extremely imbalanced classes** (approximately 15:1 to 25:1 ratio of operational to non-operational)
+    - Highly imbalanced operators and regions
+    - Community-contributed infrastructure data with **extensive missing values and data quality issues**
+    - **Complex status label variations** requiring careful normalization
+    - **Inconsistent connector type formatting** requiring robust parsing
+    - **Informative missing data patterns** that must be leveraged
+
+  This task reflects real-world applications in:
+    - EV infrastructure monitoring
+    - Urban mobility analytics
+    - Sustainability and energy transition planning
+    - Predictive maintenance systems
+
+metadata:
+  difficulty: hard
+  category: machine-learning
+  tags:
+    - tabular-data
+    - ev-infrastructure
+    - sustainability
+    - classification
+    - classical-ml
+    - geospatial
+  time_limit: 7200
+  memory_limit: 2048
+  max_agent_timeout_sec: 7200
+  expert_time_estimate_min: 120
+  junior_time_estimate_min: 300

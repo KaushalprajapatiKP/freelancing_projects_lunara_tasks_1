@@ -1,0 +1,150 @@
+prompt: |
+  Steel Plate Defect Prediction
+  
+  Build a machine learning system to predict multiple types of defects in steel plates using geometric and visual features.
+  
+  Dataset Citation:
+  This task uses the Steel Plates Faults Data Set from the UCI Machine Learning Repository.
+  Source: Buscema, M., Terzi, S., & Tastle, W. (2010). Steel Plates Faults Data Set. UCI Machine Learning Repository. https://doi.org/10.24432/C5389J
+  
+  Overview:
+  
+  Quality control in steel manufacturing relies on automated defect detection systems to identify various types of faults 
+  during production. These systems analyze geometric measurements and visual characteristics of steel plates to classify 
+  defects, helping manufacturers catch quality issues early and reduce waste. Accurate multi-label defect classification 
+  enables better process control and product quality assurance.
+  
+  In this challenge, you will build a multi-label classification model that predicts the presence of seven different 
+  defect types in steel plates. Each plate can have one or more defects simultaneously. Using geometric measurements, 
+  visual indices, and material properties, your model must learn to identify which defect types are present in each plate.
+  
+  Training data: /workdir/data/train.csv (15,375 samples with defect labels)
+  Test data: Hidden from you (3,844 samples, no labels)
+  Output: /workdir/predict.py that loads your trained model and makes predictions
+  
+  What you need to do:
+  
+  1. Train a multi-label classification model using geometric and visual features:
+     - Geometric measurements: X/Y coordinates, perimeters, pixel areas
+     - Visual indices: luminosity, edges, orientation, shape indices
+     - Material properties: steel type, plate thickness, conveyer length
+  
+  2. Create /workdir/predict.py that:
+     - Takes test CSV path as sys.argv[1]
+     - Outputs predictions to /workdir/predictions.csv
+     - Columns: id, Pastry, Z_Scratch, K_Scratch, Stains, Dirtiness, Bumps, Other_Faults
+     - Each target column should contain probabilities (0.0 to 1.0) for that defect type
+  
+  Example predict.py:
+  ```python
+  import sys, pandas as pd, pickle
+  
+  model = pickle.load(open('model.pkl', 'rb'))
+  test_df = pd.read_csv(sys.argv[1])
+  
+  # Make predictions (probabilities for each of 7 defect types)
+  predictions = model.predict_proba(...)
+  
+  pd.DataFrame({
+      'id': test_df['id'],
+      'Pastry': predictions[:, 0],
+      'Z_Scratch': predictions[:, 1],
+      'K_Scratch': predictions[:, 2],
+      'Stains': predictions[:, 3],
+      'Dirtiness': predictions[:, 4],
+      'Bumps': predictions[:, 5],
+      'Other_Faults': predictions[:, 6]
+  }).to_csv('/workdir/predictions.csv', index=False)
+  ```
+  
+  Structure of Data:
+  
+  Training Data:
+  - Location: /workdir/data/train.csv
+  - Samples: ~15,000 steel plates with known defect labels
+  - Format: CSV with features and 7 binary target columns (defect types)
+  
+  Test Data:
+  - Location: Hidden from you (grader only)
+  - Samples: ~3,800 test plates
+  - Format: CSV with features only (no defect labels)
+  
+  Output:
+  - File: /workdir/predict.py (executable Python script)
+  - Outputs: /workdir/predictions.csv with columns: id, Pastry, Z_Scratch, K_Scratch, Stains, Dirtiness, Bumps, Other_Faults
+  - Each target column should contain probabilities between 0.0 and 1.0
+  
+  Features:
+  
+  Geometric Features (8 columns):
+  - X_Minimum, X_Maximum: X-coordinate bounds of defect
+  - Y_Minimum, Y_Maximum: Y-coordinate bounds of defect
+  - Pixels_Areas: Area of defect in pixels
+  - X_Perimeter, Y_Perimeter: Perimeter measurements
+  - Length_of_Conveyer: Conveyer length measurement
+  
+  Visual Features (16 columns):
+  - Sum_of_Luminosity, Minimum_of_Luminosity, Maximum_of_Luminosity: Luminosity statistics
+  - Edges_Index, Empty_Index, Square_Index: Shape indices
+  - Outside_X_Index, Edges_X_Index, Edges_Y_Index, Outside_Global_Index: Edge detection indices
+  - LogOfAreas, Log_X_Index, Log_Y_Index: Logarithmic transformations
+  - Orientation_Index, Luminosity_Index, SigmoidOfAreas: Normalized indices
+  - (Totals: 16 visual features listed above; no duplicates)
+  
+  Material Properties (3 columns):
+  - TypeOfSteel_A300, TypeOfSteel_A400: Binary indicators for steel type (mutually exclusive)
+  - Steel_Plate_Thickness: Thickness of the steel plate
+  
+  Target Variables (7 columns - Multi-label):
+  - Pastry: Binary (0 or 1) - Pastry defect present
+  - Z_Scratch: Binary (0 or 1) - Z-shaped scratch defect
+  - K_Scratch: Binary (0 or 1) - K-shaped scratch defect
+  - Stains: Binary (0 or 1) - Stains present
+  - Dirtiness: Binary (0 or 1) - Dirtiness present
+  - Bumps: Binary (0 or 1) - Bumps present
+  - Other_Faults: Binary (0 or 1) - Other types of faults
+  
+  Note: Multiple defects can be present simultaneously on the same plate (multi-label classification).
+  
+  Evaluation:
+  
+  Your model is evaluated using ROC-AUC (Receiver Operating Characteristic - Area Under Curve) averaged across all 7 defect types. The ROC-AUC is calculated separately for each of the 7 defect types, then averaged to get the final score.
+  
+  Higher ROC-AUC scores indicate better model performance. To pass this task, your model must achieve:
+  - Primary threshold: Mean ROC-AUC of at least 0.8835 across all defect types
+  - Secondary threshold: Minimum per-target ROC-AUC of at least 0.70 for each individual defect type
+  - Fairness constraint: Maximum variance in per-target ROC-AUC scores must not exceed 0.10
+  
+  Note on thresholds: These thresholds are set to be challenging but achievable with proper ML techniques. The dataset has 
+  significant class imbalance (especially for Other_Faults at ~5% prevalence), requiring careful handling through:
+  - Advanced feature engineering (polynomial features, interaction terms, domain-specific ratios)
+  - Strong ensemble methods (XGBoost, LightGBM with proper hyperparameter tuning)
+  - Multi-label classification approaches (Classifier Chains for label dependencies, stacking)
+  - Aggressive class imbalance handling (oversampling with noise augmentation, uncapped class weights)
+  - Per-target model optimization (different hyperparameters for weak vs strong targets)
+  - Probability calibration (isotonic regression for better ranking)
+  
+  The fairness constraint prevents solutions that ignore weak targets to boost the mean score, ensuring robust 
+  performance across all defect types.
+
+  Data notes:
+  - Historical datasets may contain a column named `K_Scatch`. The provided train/test files have been normalized to `K_Scratch`, and the reference solution includes a backward-compatible rename if needed.
+  - Real-world measurement noise: The dataset contains inherent sensor measurement noise (~5% variation in feature values), reflecting realistic manufacturing conditions. Your model must be robust to this noise.
+  
+  Available packages: Python standard library, NumPy, pandas, scikit-learn, scipy, xgboost, lightgbm
+
+metadata:
+  difficulty: very-hard
+  category: MLE
+  tags:
+    - multi-label-classification
+    - machine-learning
+    - defect-detection
+    - manufacturing
+    - imbalanced-data
+  time_limit: 300
+  memory_limit: 512
+  max_agent_timeout_sec: 600
+  expert_time_estimate_min: 120
+  junior_time_estimate_min: 240
+
